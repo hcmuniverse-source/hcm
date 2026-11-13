@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- HCM brand tokens ---- */
+  --font-display: "Bricolage Grotesque", "Arial Black", sans-serif;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+
+  --color-void: #08090d;
+  --color-void-soft: #101319;
+  --color-surface: #15181f;
+  --color-line: #262b35;
+  --color-ink: #eef0f4;
+  --color-ink-dim: #9aa0ad;
+
+  --color-core: #5b57ff;      /* HCM core / shared brand accent */
+  --color-core-soft: #8b88ff;
+
+  --color-tech: #22d3c7;      /* HCM Tech */
+  --color-travel: #f2a93b;    /* HCM Travel */
+  --color-games: #7ed957;     /* HCM Gaming */
+  --color-music: #c084fc;     /* HCM Music */
+  --color-film: #ef4a5f;      /* HCM Motion Pictures */
+  --color-ai: #4c8dff;        /* HCM AI */
+  --color-education: #f472b6; /* HCM Education */
+  --color-automobile: #ff5a36; /* HCM Automobile */
+  --color-markets: #10b981;    /* HCM Markets */
+  --color-property: #ca8a04;   /* HCM Property */
+  --color-health: #22c55e;     /* HCM Health */
+  --color-media: #d946ef;      /* HCM Media */
+  --color-labs: #0ea5e9;       /* HCM Labs */
+  --color-space: #6366f1;      /* HCM Space */
+  --color-robotics: #64748b;   /* HCM Robotics */
+  --color-merch: #fb3d81;      /* HCM Merchandise */
+  --color-law: #1e3a8a;        /* HCM Law */
+  --color-hustle: #ef4444;     /* HCM Hustle */
+  --color-watches: #d4af37;    /* HCM Watches */
+  --color-crypto: #f7931a;     /* HCM Crypto */
+  --color-investors: #0f766e;  /* HCM Investors */
+  --color-gadgets: #8b5cf6;    /* HCM Gadgets */
+  --color-books: #92400e;      /* HCM Books */
+  --color-kids: #fcd34d;       /* HCM Kids */
+  --color-toys: #fb7185;       /* HCM Toys */
+  --color-sports: #16a34a;     /* HCM Sports */
+  --color-hr: #fdba74;         /* HCM HR */
+  --color-electronics: #38bdf8; /* HCM Electronics */
+  --color-podcast: #e11d48;    /* HCM Podcast */
+  --color-bank: #2563eb;       /* HCM Bank */
+  --color-drones: #0284c7;     /* HCM Drones */
+  --color-green: #065f46;      /* HCM Green */
+  --color-finance: #eab308;    /* HCM Finance */
+  --color-aerospace: #3b82f6;  /* HCM Aerospace */
+  --color-themepark: #a855f7; /* HCM Theme Park */
+  --color-posters: #fde047;   /* HCM Posters */
+  --color-print: #f97316;     /* HCM Print */
+  --color-architecture: #475569; /* HCM Architecture */
+  --color-art: #7f1d1d;        /* HCM Art */
+  --color-cloud: #06b6d4;     /* HCM Cloud */
+  --color-security: #dc2626;  /* HCM Security */
+  --color-moon: #94a3b8;       /* off-world map: Moon */
+  --color-mars: #dc2626;       /* off-world map: Mars */
+  --color-titan: #d97706;      /* off-world map: Titan */
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-void);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--color-core);
+    color: white;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-core-soft);
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-mono { font-family: var(--font-mono); }
+  .text-balance { text-wrap: balance; }
+}
+
+@keyframes map-pulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
