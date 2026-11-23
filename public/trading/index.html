@@ -20,6 +20,10 @@
   input,button{font:inherit;border-radius:10px;border:1px solid var(--line);padding:12px;background:#0f0f20;color:var(--text);width:100%}
   button{background:var(--accent);border:0;font-weight:600;margin-top:10px}
   .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:#1d1d3d;color:var(--mute)}
+  select,textarea{font:inherit;border-radius:10px;border:1px solid var(--line);padding:12px;background:#0f0f20;color:var(--text);width:100%}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px} .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+  .buy{background:var(--up)!important} .sell{background:var(--down)!important} .sm{width:auto;padding:6px 12px;margin:0;font-size:12px}
+  #msg{margin-top:10px;font-size:13px} .j{border-top:1px solid var(--line);padding:8px 0;font-size:13px} .j small{color:var(--mute)}
   .empty{color:var(--mute);padding:8px 0} #err{color:var(--down);margin-top:8px}
 </style>
 </head>
@@ -48,8 +52,27 @@
 
   <div class="card"><div class="lbl">Balance history</div><svg id="chart" viewBox="0 0 600 140" width="100%" height="140" preserveAspectRatio="none"></svg></div>
 
+  <div class="card">
+    <div class="lbl">Practice ticket · demo account only</div>
+    <div class="g2">
+      <select id="sym"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>AUDUSD</option><option>XAUUSD</option></select>
+      <select id="lots"><option>0.01</option><option>0.02</option><option>0.05</option><option>0.10</option></select>
+    </div>
+    <div class="g2">
+      <input id="slp" type="number" inputmode="decimal" placeholder="Stop loss (pips)" value="20">
+      <input id="tpp" type="number" inputmode="decimal" placeholder="Take profit (pips)" value="40">
+    </div>
+    <textarea id="why" rows="2" style="margin-top:10px" placeholder="Why this trade? (required — one sentence: what you see, where you're wrong)"></textarea>
+    <div class="g2">
+      <button id="buy" class="buy">Buy</button>
+      <button id="sell" class="sell">Sell</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
   <div class="card"><div class="lbl">Open positions</div><div class="scroll"><table id="tpos"></table></div></div>
   <div class="card"><div class="lbl">Recent trades</div><div class="scroll"><table id="tdeals"></table></div></div>
+  <div class="card"><div class="lbl">Trade journal</div><div id="jr"></div></div>
   <button id="out" style="background:#1d1d3d">Lock</button>
 </div>
 
@@ -66,7 +89,7 @@ function table(el, cols, rows, emptyMsg) {
   const thead = el.createTHead().insertRow();
   cols.forEach((c) => { const th = document.createElement('th'); th.textContent = c[0]; thead.appendChild(th); });
   const tb = el.createTBody();
-  rows.forEach((r) => { const tr = tb.insertRow(); cols.forEach((c) => { const td = tr.insertCell(); const v = c[1](r); td.textContent = v.t; if (v.c) td.className = v.c; }); });
+  rows.forEach((r) => { const tr = tb.insertRow(); cols.forEach((c) => { const td = tr.insertCell(); const v = c[1](r); if (v.btn) { const b = document.createElement('button'); b.className = 'sm'; b.textContent = v.t; b.onclick = v.btn; td.appendChild(b); } else { td.textContent = v.t; } if (v.c) td.className = v.c; }); });
 }
 
 function draw(hist) {
@@ -88,10 +111,26 @@ function render(d) {
   const net = d.deals.reduce((t, x) => t + Number(x.gross_profit || 0) + Number(x.commission || 0) + Number(x.swap || 0), 0);
   $('pl').textContent = fmt(net); $('pl').className = net >= 0 ? 'up' : 'down';
   draw(d.balance_history);
+  const jr = $('jr'); jr.textContent = ''; (d.journal || []).forEach((j) => { const div = document.createElement('div'); div.className = 'j'; div.textContent = (j.result || j.action) + (j.reason ? ' — ' + j.reason : ''); const sm = document.createElement('small'); sm.textContent = ' ' + new Date(j.created_at).toLocaleString('en-AU', { dateStyle: 'short', timeStyle: 'short' }); div.appendChild(sm); jr.appendChild(div); }); if (!(d.journal || []).length) jr.textContent = 'No trades logged yet.';
   const pl = (n) => ({ t: fmt(n), c: n == null ? '' : n >= 0 ? 'up' : 'down' });
-  table($('tpos'), [['Symbol', (r) => ({ t: r.symbol })], ['Side', (r) => ({ t: r.side })], ['Vol', (r) => ({ t: fmt(r.volume) })], ['Entry', (r) => ({ t: r.entry_price ?? '—' })], ['SL', (r) => ({ t: r.stop_loss ?? '—' })], ['TP', (r) => ({ t: r.take_profit ?? '—' })]], d.positions, 'No open positions');
+  table($('tpos'), [['Symbol', (r) => ({ t: r.symbol })], ['Side', (r) => ({ t: r.side })], ['Vol', (r) => ({ t: fmt(r.volume) })], ['Entry', (r) => ({ t: r.entry_price ?? '—' })], ['SL', (r) => ({ t: r.stop_loss ?? '—' })], ['TP', (r) => ({ t: r.take_profit ?? '—' })], ['', (r) => ({ t: 'Close', btn: () => trade({ action: 'close', positionId: r.id, reason: 'manual close' }) })]], d.positions, 'No open positions');
   table($('tdeals'), [['When', (r) => ({ t: r.closed_at ? new Date(r.closed_at).toLocaleString('en-AU', { dateStyle: 'short', timeStyle: 'short' }) : '—' })], ['Symbol', (r) => ({ t: r.symbol })], ['Side', (r) => ({ t: r.side })], ['Vol', (r) => ({ t: fmt(r.volume) })], ['P/L', (r) => pl(r.gross_profit)]], d.deals, 'No trades yet');
 }
+
+const TRADE = 'https://jafnpecytlkbsntvylne.supabase.co/functions/v1/ctrader-trade';
+const SYNC = 'https://jafnpecytlkbsntvylne.supabase.co/functions/v1/ctrader-sync';
+async function trade(body) {
+  const m = $('msg'); m.className = ''; m.textContent = 'Sending…';
+  try {
+    const r = await fetch(TRADE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: load('hcm_pass'), ...body }) });
+    const d = await r.json();
+    if (!d.ok) { m.className = 'down'; m.textContent = d.error || 'Failed'; return; }
+    m.className = 'up'; m.textContent = d.message + ' ✔'; if (body.action === 'open') $('why').value = '';
+    setTimeout(async () => { try { await fetch(SYNC, { method: 'POST' }); } catch (e) {} open(load('hcm_pass')); }, 3000);
+  } catch (e) { m.className = 'down'; m.textContent = 'Network error. Try again.'; }
+}
+function ticket(side) { trade({ action: 'open', side, symbol: $('sym').value, lots: $('lots').value, sl_pips: $('slp').value, tp_pips: $('tpp').value, reason: $('why').value }); }
+$('buy').onclick = () => ticket('buy'); $('sell').onclick = () => ticket('sell');
 
 async function open(pass) {
   $('err').textContent = '';
