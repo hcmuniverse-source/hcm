@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HCM Markets · Pepperstone Dashboard</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{--bg:#0b0b14;--card:#14142a;--line:#26264a;--text:#eceefc;--mute:#8a8cb0;--accent:#5B57FF;--up:#22c55e;--down:#ef4444}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:760px;margin-inline:auto}
+  h1{font-size:20px;margin:4px 0 2px} .sub{color:var(--mute);font-size:13px;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .big{font-size:34px;font-weight:700;letter-spacing:-.5px}
+  .row{display:flex;gap:12px;flex-wrap:wrap} .row>div{flex:1;min-width:130px}
+  .lbl{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  .up{color:var(--up)} .down{color:var(--down)}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--mute);font-weight:500} .scroll{overflow-x:auto}
+  input,button{font:inherit;border-radius:10px;border:1px solid var(--line);padding:12px;background:#0f0f20;color:var(--text);width:100%}
+  button{background:var(--accent);border:0;font-weight:600;margin-top:10px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:#1d1d3d;color:var(--mute)}
+  .empty{color:var(--mute);padding:8px 0} #err{color:var(--down);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="login" class="card" hidden>
+  <h1>HCM Markets dashboard</h1>
+  <div class="sub">Private. Enter your passphrase.</div>
+  <input id="pass" type="password" placeholder="Passphrase" autocomplete="current-password">
+  <button id="go">Open</button>
+  <div id="err"></div>
+</div>
+
+<div id="app" hidden>
+  <h1>Pepperstone Dashboard</h1>
+  <div class="sub"><span id="acct"></span> · <span id="mode" class="badge"></span> · updated <span id="sync"></span></div>
+
+  <div class="card">
+    <div class="lbl">Balance</div>
+    <div class="big" id="bal">—</div>
+    <div class="row" style="margin-top:12px">
+      <div><div class="lbl">Open positions</div><div id="npos">0</div></div>
+      <div><div class="lbl">Closed trades (4 wks)</div><div id="ndeals">0</div></div>
+      <div><div class="lbl">Net P/L (4 wks)</div><div id="pl">0.00</div></div>
+    </div>
+  </div>
+
+  <div class="card"><div class="lbl">Balance history</div><svg id="chart" viewBox="0 0 600 140" width="100%" height="140" preserveAspectRatio="none"></svg></div>
+
+  <div class="card"><div class="lbl">Open positions</div><div class="scroll"><table id="tpos"></table></div></div>
+  <div class="card"><div class="lbl">Recent trades</div><div class="scroll"><table id="tdeals"></table></div></div>
+  <button id="out" style="background:#1d1d3d">Lock</button>
+</div>
+
+<script>
+const API = 'https://jafnpecytlkbsntvylne.supabase.co/functions/v1/ctrader-dashboard';
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function table(el, cols, rows, emptyMsg) {
+  el.textContent = '';
+  if (!rows.length) { const p = document.createElement('div'); p.className = 'empty'; p.textContent = emptyMsg; el.replaceWith(Object.assign(p, { id: el.id })); return; }
+  const thead = el.createTHead().insertRow();
+  cols.forEach((c) => { const th = document.createElement('th'); th.textContent = c[0]; thead.appendChild(th); });
+  const tb = el.createTBody();
+  rows.forEach((r) => { const tr = tb.insertRow(); cols.forEach((c) => { const td = tr.insertCell(); const v = c[1](r); td.textContent = v.t; if (v.c) td.className = v.c; }); });
+}
+
+function draw(hist) {
+  const svg = $('chart'); svg.textContent = '';
+  if (hist.length < 2) { svg.insertAdjacentHTML('beforeend', '<text x="10" y="70" fill="#8a8cb0" font-size="14">Building history… check back soon</text>'); return; }
+  const v = hist.map((h) => Number(h.balance)); const min = Math.min(...v), max = Math.max(...v), span = max - min || 1;
+  const pts = v.map((y, i) => `${(i / (v.length - 1)) * 600},${130 - ((y - min) / span) * 120}`).join(' ');
+  svg.insertAdjacentHTML('beforeend', `<polyline fill="none" stroke="#5B57FF" stroke-width="2.5" points="${pts}"/>`);
+}
+
+function render(d) {
+  const a = d.accounts[0]; const s = d.sync[0];
+  $('acct').textContent = a ? 'Account ' + a.id : 'No account';
+  $('mode').textContent = a && a.is_live ? 'LIVE' : 'DEMO';
+  $('sync').textContent = s && s.last_synced_at ? new Date(s.last_synced_at).toLocaleString('en-AU') : 'never';
+  const last = d.balance_history[d.balance_history.length - 1];
+  $('bal').textContent = last ? fmt(last.balance) + (a && a.currency ? ' ' + a.currency : '') : '—';
+  $('npos').textContent = d.positions.length; $('ndeals').textContent = d.deals.filter((x) => x.gross_profit != null).length;
+  const net = d.deals.reduce((t, x) => t + Number(x.gross_profit || 0) + Number(x.commission || 0) + Number(x.swap || 0), 0);
+  $('pl').textContent = fmt(net); $('pl').className = net >= 0 ? 'up' : 'down';
+  draw(d.balance_history);
+  const pl = (n) => ({ t: fmt(n), c: n == null ? '' : n >= 0 ? 'up' : 'down' });
+  table($('tpos'), [['Symbol', (r) => ({ t: r.symbol })], ['Side', (r) => ({ t: r.side })], ['Vol', (r) => ({ t: fmt(r.volume) })], ['Entry', (r) => ({ t: r.entry_price ?? '—' })], ['SL', (r) => ({ t: r.stop_loss ?? '—' })], ['TP', (r) => ({ t: r.take_profit ?? '—' })]], d.positions, 'No open positions');
+  table($('tdeals'), [['When', (r) => ({ t: r.closed_at ? new Date(r.closed_at).toLocaleString('en-AU', { dateStyle: 'short', timeStyle: 'short' }) : '—' })], ['Symbol', (r) => ({ t: r.symbol })], ['Side', (r) => ({ t: r.side })], ['Vol', (r) => ({ t: fmt(r.volume) })], ['P/L', (r) => pl(r.gross_profit)]], d.deals, 'No trades yet');
+}
+
+async function open(pass) {
+  $('err').textContent = '';
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass }) });
+    if (r.status === 401) { store('hcm_pass'); $('login').hidden = false; $('app').hidden = true; if (pass) $('err').textContent = 'Wrong passphrase'; return; }
+    const d = await r.json(); if (d.error) throw new Error(d.error);
+    store('hcm_pass', pass); $('login').hidden = true; $('app').hidden = false; render(d);
+  } catch (e) { $('login').hidden = false; $('err').textContent = 'Could not load. Try again.'; }
+}
+$('go').onclick = () => open($('pass').value.trim());
+$('pass').onkeydown = (e) => { if (e.key === 'Enter') $('go').click(); };
+$('out').onclick = () => { store('hcm_pass'); location.reload(); };
+const saved = load('hcm_pass'); if (saved) open(saved); else $('login').hidden = false;
+setInterval(() => { const p = load('hcm_pass'); if (p && !$('app').hidden) open(p); }, 60000);
+</script>
+</body>
+</html>

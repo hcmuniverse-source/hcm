@@ -212,6 +212,14 @@ export default function Markets() {
                 Read the code
                 <ExternalLink size={16} />
               </a>
+              <a
+                href="./trading/"
+                className="mt-8 ml-3 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-85"
+                style={{ borderColor: d.color, color: d.color }}
+              >
+                Live demo dashboard
+                <ExternalLink size={16} />
+              </a>
               <p className="mt-6 font-mono text-[11px] text-[var(--color-ink-dim)]">
                 Educational sample, not personal financial advice. Trading carries risk.
               </p>
